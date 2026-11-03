@@ -1,4 +1,4 @@
-import requests, os, time, random
+import requests, os, time, random, json
 from datetime import datetime, timezone
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -9,11 +9,18 @@ def send_message(text):
     data = {"chat_id": CHANNEL_ID, "text": text, "parse_mode": "Markdown"}
     requests.post(url, data=data)
 
-print("FINAL REAL WIN/LOSS Bot Started...")
+def load_last():
+    try:
+        with open("last_result.json", "r") as f:
+            return json.load(f)
+    except:
+        return None
 
-last_period = None
-last_signal = None
-last_number = None
+def save_last(data):
+    with open("last_result.json", "w") as f:
+        json.dump(data, f)
+
+print("FINAL PERSISTENT Bot Started...")
 
 while True:
     try:
@@ -21,18 +28,21 @@ while True:
         minute_utc = now_utc.hour * 60 + now_utc.minute
         period = f"{now_utc.strftime('%Y%m%d')}1000{10001 + minute_utc}"
         
-        # Naya prediction
         signal = random.choice(["BIG", "SMALL"])
-        # Is period ka real number (0-9) - ye Dhani jaisa hi hoga
-        real_number = random.randint(0, 9)
-        real_bs = "BIG" if real_number >= 5 else "SMALL"
+        current_number = random.randint(0, 9)
 
+        # Pichla data file se lo
+        last_data = load_last()
         result_text = ""
-        if last_period:
-            # PICHLE period ka sahi WIN/LOSS
-            win = (last_signal == ("BIG" if last_number >=5 else "SMALL"))
-            icon = "✅ *WIN* 💰🔥" if win else "❌ *LOSS* 📉"
+        
+        if last_data:
+            last_period = last_data['period']
+            last_signal = last_data['signal']
+            last_number = last_data['number']
             last_bs = "BIG" if last_number >=5 else "SMALL"
+            
+            win = (last_signal == last_bs)
+            icon = "✅ *WIN* 💰🔥" if win else "❌ *LOSS* 📉"
             
             result_text = f"""
 ━━━━━━━━━━━━━━
@@ -41,6 +51,12 @@ while True:
 🔢 Number: {last_number} ({last_bs})
 🎯 Prediction: {last_signal}
 {icon}
+━━━━━━━━━━━━━━
+"""
+        else:
+            result_text = """
+━━━━━━━━━━━━━━
+📊 Starting New Session...
 ━━━━━━━━━━━━━━
 """
 
@@ -56,12 +72,10 @@ https://dhani11.com/register?inviteCode=793HTLN&from=web
 ⏰ {datetime.now().strftime('%d-%m-%Y %I:%M %p')} IST
 """
         send_message(msg)
-        print(f"Sent: {period} | Pred: {signal} | Last: {last_number} {last_signal} -> {'WIN' if win else 'LOSS' if last_period else ''}")
+        print(f"Sent: {period} | Pred: {signal}")
 
-        # Save for next round
-        last_period = period
-        last_signal = signal
-        last_number = real_number
+        # Current ko save karo next ke liye
+        save_last({"period": period, "signal": signal, "number": current_number})
 
         time.sleep(60)
 
