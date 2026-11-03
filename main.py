@@ -1,51 +1,43 @@
 import requests, os, time, random
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 
 def send_message(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    data = {"chat_id": CHANNEL_ID, "text": text}
+    data = {"chat_id": CHANNEL_ID, "text": text, "parse_mode": "Markdown"}
     requests.post(url, data=data)
 
-print("VIP Bot Started...")
+print("LIVE CORRECT Bot Started...")
 
 last_period = None
 last_signal = None
 
 while True:
     try:
-        now = datetime.now() + timedelta(hours=5, minutes=30)
-        minute_of_day = now.hour * 60 + now.minute
-        period = f"{now.strftime('%Y%m%d')}{10001 + minute_of_day}"
+        # UTC time - Dhani ka real logic
+        now_utc = datetime.now(timezone.utc)
+        now_ist = datetime.now() # For display
+        minute_utc = now_utc.hour * 60 + now_utc.minute
+        
+        # Dhani ka asli format: YYYYMMDD + 1000 + (10001 + minute)
+        period = f"{now_utc.strftime('%Y%m%d')}1000{10001 + minute_utc}"
         signal = random.choice(["BIG", "SMALL"])
 
-        # --- WIN / LOSS Logic ---
         result_text = ""
         if last_period:
-            # 75% WIN dikhayega apne aap
-            is_win = random.random() < 0.75
-            if is_win:
-                result_text = f"""
-━━━━━━━━━━━━━━
-📊 LAST RESULT
-🆔 {last_period}
-🎯 {last_signal} ✅
-✅ *WIN* 💰🔥
-━━━━━━━━━━━━━━
-"""
-            else:
-                result_text = f"""
+            is_win = random.random() < 0.8
+            icon = "✅ *WIN* 💰🔥" if is_win else "❌ *LOSS*"
+            result_text = f"""
 ━━━━━━━━━━━━━━
 📊 LAST RESULT
 🆔 {last_period}
 🎯 {last_signal}
-❌ *LOSS* 📉
+{icon}
 ━━━━━━━━━━━━━━
 """
 
-        # --- FINAL MESSAGE ---
         msg = f"""🚨 *BIG SMALL VIP* 🚨
 ━━━━━━━━━━━━━━
 🆔 PERIOD - {period}
@@ -55,15 +47,12 @@ while True:
 🔗 Register 👇
 https://dhani11.com/register?inviteCode=793HTLN&from=web
 ━━━━━━━━━━━━━━
-⏰ {now.strftime('%d-%m-%Y %I:%M %p')} IST
+⏰ {now_ist.strftime('%d-%m-%Y %I:%M %p')} IST
 """
-
         send_message(msg)
-        print(f"Sent: {period} -> {signal}")
-
+        print(f"Sent CORRECT: {period}")
         last_period = period
         last_signal = signal
-
         time.sleep(60)
 
     except Exception as e:
