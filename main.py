@@ -9,13 +9,14 @@ def send_message(text):
     data = {"chat_id": CHANNEL_ID, "text": text}
     requests.post(url, data=data)
 
-print("Bot Started...")
+print("Bot Started - Correct Period...")
 
 while True:
     try:
-        now = datetime.now() + timedelta(hours=5, minutes=30)
-        # Period jaise 20261103108XX
-        period = f"{now.strftime('%Y%m%d')}108{random.randint(10,99)}"
+        now = datetime.now() + timedelta(hours=5, minutes=30) # IST
+        minute_of_day = now.hour * 60 + now.minute
+        # Sahi sequence wala period
+        period = f"{now.strftime('%Y%m%d')}{10001 + minute_of_day}"
         signal = random.choice(["BIG", "SMALL"])
         
         msg = f"""Period - {period}
@@ -28,7 +29,7 @@ https://dhani11.com/register?inviteCode=793HTLN&from=web"""
 
         send_message(msg)
         print(f"Sent: {period} -> {signal}")
-        time.sleep(60) # 1 min me ek signal
+        time.sleep(60)
 
     except Exception as e:
         print(f"Error: {e}")
