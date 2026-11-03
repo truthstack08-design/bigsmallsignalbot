@@ -6,52 +6,29 @@ CHANNEL_ID = os.getenv("CHANNEL_ID")
 
 def send_message(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    data = {"chat_id": CHANNEL_ID, "text": text, "parse_mode": "Markdown"}
+    data = {"chat_id": CHANNEL_ID, "text": text}
     requests.post(url, data=data)
 
-# Period number generate karna
-def get_period():
-    now = datetime.now()
-    # Jaise 20261103-001
-    date_str = now.strftime("%Y%m%d")
-    minute_of_day = now.hour * 60 + now.minute
-    period_no = f"{date_str}{10001 + minute_of_day}"
-    return period_no
+print("Bot Started...")
 
-print("Pro Bot Started...")
 while True:
     try:
-        now = datetime.now()
-        period = get_period()
-        
-        # Signal Logic
+        now = datetime.now() + timedelta(hours=5, minutes=30)
+        # Period jaise 20261103108XX
+        period = f"{now.strftime('%Y%m%d')}108{random.randint(10,99)}"
         signal = random.choice(["BIG", "SMALL"])
-        confidence = random.randint(90, 97)
         
-        # Next period ka time
-        next_time = (now + timedelta(minutes=1)).strftime("%I:%M:%S %p")
-        expiry = (now + timedelta(minutes=1)).strftime("%I:%M %p")
-        
-        msg = f"""🚨 *BIG SMALL VIP SIGNAL* 🚨
-━━━━━━━━━━━━━━━━━
-🆔 *PERIOD:* `{period}`
+        msg = f"""Period - {period}
 
-🔮 *PREDICTION:* *{signal}* ✅
-📊 *Confidence:* {confidence}%
-⏰ *Time:* {now.strftime("%d-%m-%Y %I:%M:%S %p")}
+Prediction - {signal} ✅
 
-━━━━━━━━━━━━━━━━━
-💰 *BET:* {signal}
-🛡️ *Backup:* 1 Level Only
-⏳ *Valid Till:* {expiry}
+Register 🖇️ Link 👇
 
-⚡ Next Signal: {next_time}
-👉 Join: @parasbigsmallvipsignal24h
-"""
+https://dhani11.com/register?inviteCode=793HTLN&from=web"""
 
         send_message(msg)
         print(f"Sent: {period} -> {signal}")
-        time.sleep(60) # Har 1 min
+        time.sleep(60) # 1 min me ek signal
 
     except Exception as e:
         print(f"Error: {e}")
