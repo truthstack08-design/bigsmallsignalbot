@@ -9,29 +9,33 @@ def send_message(text):
     requests.post(url, data={"chat_id": CHANNEL_ID, "text": text, "parse_mode": "Markdown"})
 
 def get_real_dhani_history():
-    # Dhani ka real API - ye asli number deta hai
-    try:
-        url = "https://dhaniwin4.com/api/webapi/GetNoaverageEmerdList"
-        headers = {
-            "User-Agent": "Mozilla/5.0",
-            "Content-Type": "application/json",
-            "Origin": "https://dhaniwin4.com",
-            "Referer": "https://dhaniwin4.com/"
-        }
-        payload = {
-            "pageSize": 10,
-            "pageNo": 1,
-            "typeId": 1,
-            "language": 0,
-            "random": "f1a3c2d4e5b6a7c8",
-            "signature": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"
-        }
-        r = requests.post(url, json=payload, headers=headers, timeout=10)
-        data = r.json()
-        if data['code'] == 0:
-            return data['data']['list']  # ye list me 10 real results honge
-    except Exception as e:
-        print("API fail:", e)
+    # Try multiple domains + without signature
+    domains = ["https://dhaniwin4.com", "https://dhani11.com", "https://dhaniwin1.com"]
+    for domain in domains:
+        try:
+            url = f"{domain}/api/webapi/GetNoaverageEmerdList"
+            headers = {
+                "User-Agent": "Mozilla/5.0",
+                "Content-Type": "application/json",
+                "Origin": domain,
+                "Referer": f"{domain}/"
+            }
+            # Signature ke bina simple payload - zyada kaam karta hai
+            payload = {
+                "pageSize": 10,
+                "pageNo": 1,
+                "typeId": 1,
+                "language": 0
+            }
+            r = requests.post(url, json=payload, headers=headers, timeout=10)
+            print(f"Trying {domain}: {r.status_code} {r.text[:200]}")
+            data = r.json()
+            if data.get('code') == 0 and data.get('data', {}).get('list'):
+                print(f"SUCCESS from {domain}")
+                return data['data']['list']
+        except Exception as e:
+            print(f"Fail {domain}: {e}")
+            continue
     return None
 
 def load_last():
@@ -51,7 +55,6 @@ while True:
         mins = now.hour*60 + now.minute
         period = f"{now.strftime('%Y%m%d')}1000{10001+mins}"
 
-        # Naya prediction
         import random
         signal = random.choice(["BIG","SMALL"])
 
@@ -59,7 +62,6 @@ while True:
         result_text = ""
 
         if last:
-            # Asli history se check karo
             history = get_real_dhani_history()
             real_num = None
             real_bs = None
@@ -67,13 +69,12 @@ while True:
 
             if history:
                 for item in history:
-                    if item['issueNumber'] == last['period']:
+                    if str(item['issueNumber']) == str(last['period']):
                         real_num = int(item['number'])
                         real_bs = "BIG" if real_num >=5 else "SMALL"
                         real_period = item['issueNumber']
                         break
             
-            # Agar API se mila to asli, warna pichla wala hi
             if real_num is not None:
                 win = (last['signal'] == real_bs)
                 icon = "✅ *WIN* 💰" if win else "❌ *LOSS* 📉"
@@ -81,7 +82,7 @@ while True:
 ━━━━━━━━━━━━━━
 📊 LAST RESULT
 🆔 {real_period}
-🔢 Number: {real_num} ({real_bs})  <- Dhani ka asli
+🔢 Number: {real_num} ({real_bs})
 🎯 Prediction: {last['signal']}
 {icon}
 ━━━━━━━━━━━━━━
@@ -89,9 +90,10 @@ while True:
             else:
                 result_text = f"""
 ━━━━━━━━━━━━━━
-📊 LAST RESULT (API fail)
+📊 LAST RESULT
 🆔 {last['period']}
 🎯 Prediction: {last['signal']}
+⏳ Result: Waiting for official...
 ━━━━━━━━━━━━━━
 """
 
