@@ -1,70 +1,49 @@
-import requests, os, time, json, random
-from datetime import datetime, timezone
+import requests
+import time
+import random
+import os
+import threading
+from flask import Flask
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHANNEL_ID = os.getenv("CHANNEL_ID")
+app = Flask(__name__)
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+CHAT_ID = os.environ.get("CHAT_ID")
 
-def send(text):
-    requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", 
-                  data={"chat_id": CHANNEL_ID, "text": text, "parse_mode": "Markdown"})
-
-def get_real_result(period_to_find):
-    # Try multiple public APIs that are NOT blocked on GitHub
-    apis = [
-        "https://api.bdg88.win/api/webapi/GetNoaverageEmerdList",
-        "https://api.bdg18.com/api/webapi/GetNoaverageEmerdList",
-        "https://dhaniwin4.com/api/webapi/GetNoaverageEmerdList"
-    ]
-    payload = {"pageSize": 20, "pageNo": 1, "typeId": 1, "language": 0}
-    headers = {"User-Agent": "Mozilla/5.0", "Content-Type": "application/json"}
-    
-    for api in apis:
-        try:
-            r = requests.post(api, json=payload, headers=headers, timeout=10)
-            data = r.json()
-            if data.get('data',{}).get('list'):
-                for item in data['data']['list']:
-                    if str(item.get('issueNumber')) == str(period_to_find):
-                        return int(item.get('number'))
-                print(f"Checked {api}, period not found in list")
-        except Exception as e:
-            print(f"API fail {api}: {e}")
-    return None
-
-def load_last():
+def send(msg):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     try:
-        with open("last.json","r") as f:
-            return json.load(f)
+        requests.post(url, data={"chat_id": CHAT_ID, "text": msg}, timeout=10)
     except:
-        return None
+        pass
 
-def save_last(d):
-    with open("last.json","w") as f:
-        json.dump(d,f)
+def listen():
+    offset = 0
+    send("Bot Ready ✅\nAb Period Number bhejo, mai Prediction dunga\nExample: 202611043145")
+    while True:
+        try:
+            url = f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates?offset={offset}&timeout=30"
+            res = requests.get(url, timeout=35).json()
+            for r in res.get("result", []):
+                offset = r["update_id"] + 1
+                msg = r.get("message", {})
+                text = msg.get("text", "").strip()
+                # Sirf number aaya to prediction do
+                if text.isdigit():
+                    try:
+                        next_period = str(int(text) + 1)
+                    except:
+                        next_period = text
+                    signal = random.choice(["BIG 🟢", "SMALL 🔴"])
+                    send(f"Period: {next_period}\nPrediction: {signal}\nTime: 1 Min\nDhani Win - Next Signal")
+        except:
+            time.sleep(2)
+        time.sleep(1)
 
-while True:
-    try:
-        now = datetime.now(timezone.utc)
-        mins = now.hour*60 + now.minute
-        period = f"{now.strftime('%Y%m%d')}1000{10001+mins}"
-        signal = random.choice(["BIG","SMALL"])
-        
-        last = load_last()
-        result_text = ""
-        
-        if last:
-            real_num = get_real_result(last['period'])
-            if real_num is not None:
-                real_bs = "BIG" if real_num >= 5 else "SMALL"
-                icon = "✅ *WIN* 💰" if last['signal'] == real_bs else "❌ *LOSS* 📉"
-                result_text = f"\n📊 LAST: {last['period']} | Num {real_num} ({real_bs}) | Pred {last['signal']} {icon}\n"
-            else:
-                result_text = f"\n📊 LAST: {last['period']} | Pred {last['signal']} | ⏳ Official result awaited...\n"
+@app.route('/')
+def home():
+    return "Bot is Running!"
 
-        msg = f"🚨 BIG SMALL VIP 🚨\n🆔 {period}\n🔮 {signal}\n{result_text}\n⏰ {datetime.now().strftime('%d-%m-%Y %I:%M %p')}"
-        send(msg)
-        save_last({"period": period, "signal": signal})
-        time.sleep(60)
-    except Exception as e:
-        print(e)
-        time.sleep(10)
+threading.Thread(target=listen, daemon=True).start()
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
