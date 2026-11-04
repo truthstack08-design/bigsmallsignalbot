@@ -5,8 +5,31 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 
 def send(text):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": CHANNEL_ID, "text": text, "parse_mode": "Markdown"})
+    requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", 
+                  data={"chat_id": CHANNEL_ID, "text": text, "parse_mode": "Markdown"})
+
+def get_real_result(period_to_find):
+    # Try multiple public APIs that are NOT blocked on GitHub
+    apis = [
+        "https://api.bdg88.win/api/webapi/GetNoaverageEmerdList",
+        "https://api.bdg18.com/api/webapi/GetNoaverageEmerdList",
+        "https://dhaniwin4.com/api/webapi/GetNoaverageEmerdList"
+    ]
+    payload = {"pageSize": 20, "pageNo": 1, "typeId": 1, "language": 0}
+    headers = {"User-Agent": "Mozilla/5.0", "Content-Type": "application/json"}
+    
+    for api in apis:
+        try:
+            r = requests.post(api, json=payload, headers=headers, timeout=10)
+            data = r.json()
+            if data.get('data',{}).get('list'):
+                for item in data['data']['list']:
+                    if str(item.get('issueNumber')) == str(period_to_find):
+                        return int(item.get('number'))
+                print(f"Checked {api}, period not found in list")
+        except Exception as e:
+            print(f"API fail {api}: {e}")
+    return None
 
 def load_last():
     try:
@@ -19,7 +42,6 @@ def save_last(d):
     with open("last.json","w") as f:
         json.dump(d,f)
 
-print("Bot Started...")
 while True:
     try:
         now = datetime.now(timezone.utc)
@@ -31,42 +53,18 @@ while True:
         result_text = ""
         
         if last:
-            # TUMHARI WALI LOGIC
-            # Pichli baar jo bola tha uska random result banao
-            real_num = random.randint(0, 9)
-            real_bs = "BIG" if real_num >= 5 else "SMALL"
-            
-            if last['signal'] == real_bs:
-                icon = "✅ *WIN* 💰"
+            real_num = get_real_result(last['period'])
+            if real_num is not None:
+                real_bs = "BIG" if real_num >= 5 else "SMALL"
+                icon = "✅ *WIN* 💰" if last['signal'] == real_bs else "❌ *LOSS* 📉"
+                result_text = f"\n📊 LAST: {last['period']} | Num {real_num} ({real_bs}) | Pred {last['signal']} {icon}\n"
             else:
-                icon = "❌ *LOSS* 📉"
-            
-            result_text = f"""
-━━━━━━━━━━━━━━
-📊 LAST RESULT
-🆔 {last['period']}
-🔢 Number: {real_num} ({real_bs})
-🎯 Prediction: {last['signal']}
-{icon}
-━━━━━━━━━━━━━━
-"""
-            # SMALL bola SMALL aaya = WIN
-            # SMALL bola BIG aaya = LOSS
+                result_text = f"\n📊 LAST: {last['period']} | Pred {last['signal']} | ⏳ Official result awaited...\n"
 
-        msg = f"""🚨 *BIG SMALL VIP* 🚨
-━━━━━━━━━━━━━━
-🆔 PERIOD - {period}
-🔮 PREDICTION - {signal} ✅
-{result_text}
-🔗 Register 👇
-https://dhani11.com/register?inviteCode=793HTLN&from=web
-━━━━━━━━━━━━━━
-⏰ {datetime.now().strftime('%d-%m-%Y %I:%M %p')} IST
-"""
+        msg = f"🚨 BIG SMALL VIP 🚨\n🆔 {period}\n🔮 {signal}\n{result_text}\n⏰ {datetime.now().strftime('%d-%m-%Y %I:%M %p')}"
         send(msg)
         save_last({"period": period, "signal": signal})
-        print(f"Sent {period} {signal}")
         time.sleep(60)
     except Exception as e:
-        print(f"Error: {e}")
+        print(e)
         time.sleep(10)
